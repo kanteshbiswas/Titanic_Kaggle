@@ -1,0 +1,114 @@
+---
+title: "Exploratory Data Analysis Of The Titanic Dataset"
+author: "Kantesh Biswas"
+date: "August 4, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This markdown document is about exploratory data analysis on the Titanic dataset.
+The first thing that i am going to do is some feature engineering.I am also going to make some really cool visualizations and at the end i am going to use **Random Forest** to make predictions.
+
+The following section provides a brief description about all the columns in our train and test datasets.
+
+Variable Name | Description
+--------------|-------------
+Survived      | Survived (1) or died (0)
+Pclass        | Passenger's class
+Name          | Passenger's name
+Sex           | Passenger's sex
+Age           | Passenger's age
+SibSp         | Number of siblings/spouses aboard
+Parch         | Number of parents/children aboard
+Ticket        | Ticket number
+Fare          | Fare
+Cabin         | Cabin
+Embarked      | Port of embarkation
+
+## First thing first let's load all the libraries that we will be using.
+
+```{r,message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(mice)
+library(randomForest)
+```
+
+Now that our packages are loaded let's load the datasets.
+
+```{r,message=FALSE,warning=FALSE}
+train<-read.csv("train.csv",header = T,stringsAsFactors = F)
+test<-read.csv("test.csv",header = T,stringsAsFactors = F)
+combined<-bind_rows(train,test)
+```
+Here we have combined our train and test dataset because before starting model building we will do some feature engineering which will definately increase the accuracy of our model.
+Since the datasets are loaded let's have a look at the structures of our datasets.
+
+```{r,message=FALSE,warning=FALSE}
+str(train)
+str(test)
+str(combined)
+```
+Notice that in our test dataset there is no survived column because that's how kaggle works we need to predict the survival rate on the test dataset.
+Let's check how many people have survived in our training dataset.
+```{r,message=FALSE,warning=FALSE}
+table(train$Survived)
+```
+342 survived out of 549.Well we can also find the percentage of people that survived by using the following command.
+```{r,message=FALSE,warning=FALSE}
+prop.table(table(train$Survived))
+```
+We can see that 38% of people has survived the disaster.That means most of the people abroad were perished.
+Now let's make our first prediction,since most people died in our training set,perhaps we can assume that everyone in the test set also died.
+So let's add our first prediction to the test set.
+```{r,message=FALSE,warning=FALSE}
+test$Survived<-rep(0,418)
+```
+We need to submit a csv file with PassengerId and survived column to **Kaggle**.
+So let's prepare our submission file.
+```{r,message=FALSE,warning=FALSE}
+submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
+write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
+```
+Here we have excluded the row numbers oterwise kaggle will reject our submission.
+As we know that at the time of the disaster women and children were saved first.Let's try to find that out.
+```{r,message=FALSE,warning=FALSE}
+table(train$Sex)
+```
+We can see that the majority of the passengers were male.Now let's find out the proportion of male and female passengers that survived the disaster.
+```{r,message=FALSE,warning=FALSE}
+prop.table(table(train$Sex,train$Survived))
+```
+By default the proportion table command takes each entry in the table and divides by the total number of passengers.But we want to see the proportion of each sex that survived, as separate groups.We will pass one more argument **1** to our function which stands for the rows.**2** stands for columns.
+```{r,message=FALSE,warning=FALSE}
+prop.table(table(train$Sex,train$Survived),1)
+```
+Well we can see that a very low percentage of male survived whereas majority of females abroad were survived.
+Let's update our old prediction and mark all the females passenger in our test dataset as survived.
+```{r,message=FALSE,warning=FALSE}
+test$Survived<-0
+test$Survived[test$Sex=='female']<-1
+```
+Ok now we need to update our submission file also.
+```{r,message=FALSE,warning=FALSE}
+submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
+write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
+```
+
+
+
+We can break down  **Passenger name** variable into **Passenger title** and **Surname** which can be very useful for our predictions.
+
+```{r}
+
+```
+
+
+
+
+
+
