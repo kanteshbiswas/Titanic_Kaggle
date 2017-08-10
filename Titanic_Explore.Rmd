@@ -2,7 +2,9 @@
 title: "Exploratory Data Analysis Of The Titanic Dataset"
 author: "Kantesh Biswas"
 date: "August 4, 2017"
-output: html_document
+output: 
+  html_document: 
+    keep_md: yes
 ---
 
 ```{r setup, include=FALSE}
