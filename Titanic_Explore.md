@@ -190,10 +190,54 @@ Ok now we need to update our submission file also.
 submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
 write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
 ```
+Now let's look into the age variable.
+
+```r
+summary(train$Age)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##    0.42   20.12   28.00   29.70   38.00   80.00     177
+```
+There are 177 NA values.We will impute those NA values with the mean age of the rest of the passengers.
+Let's create a new variable to find out if the passenger was below 18 or not.
+
+```r
+train$Child<-0
+train$Child[train$Age<18]<-1
+```
+Let's find out the number of **Adults** and **Childrens** in our dataset by gender.
+Aggregate function is very usefull when we want to apply a specific command for groups.
+
+```r
+aggregate(Survived~Child+Sex,data = train,FUN = length)
+```
+
+```
+##   Child    Sex Survived
+## 1     0 female      259
+## 2     1 female       55
+## 3     0   male      519
+## 4     1   male       58
+```
+There are 259 female and 519 male adults in our dataset.Similarly 55 female and 58 male children are there.
+Now we will find out how many male and female children survived the disaster.
+
+```r
+aggregate(Survived~Child+Sex,data = train,FUN = sum)
+```
+
+```
+##   Child    Sex Survived
+## 1     0 female      195
+## 2     1 female       38
+## 3     0   male       86
+## 4     1   male       23
+```
+Here we can see **195** female **Adults** and **38** female children survived whereas **86** male **Adults** and **23** male children survived the disaster.
 
 
-
-We can break down  **Passenger name** variable into **Passenger title** and **Surname** which can be very useful for our predictions.
 
 
 
