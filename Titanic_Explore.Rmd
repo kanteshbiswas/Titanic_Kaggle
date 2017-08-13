@@ -43,8 +43,8 @@ library(randomForest)
 Now that our packages are loaded let's load the datasets.
 
 ```{r,message=FALSE,warning=FALSE}
-train<-read.csv("train.csv",header = T,stringsAsFactors = F)
-test<-read.csv("test.csv",header = T,stringsAsFactors = F)
+train<-read.csv("train.csv",header = T)
+test<-read.csv("test.csv",header = T)
 combined<-bind_rows(train,test)
 ```
 Here we have combined our train and test dataset because before starting model building we will do some feature engineering which will definately increase the accuracy of our model.
@@ -121,6 +121,142 @@ Now we will find out how many male and female children survived the disaster.
 aggregate(Survived~Child+Sex,data = train,FUN = sum)
 ```
 Here we can see **195** female **Adults** and **38** female children survived whereas **86** male **Adults** and **23** male children survived the disaster.
+Now we are interested to know the proportion again.We can do that by using the following piece of code.
+```{r,message=FALSE,warning=FALSE}
+aggregate(Survived~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
+```
+Well it's clearly visible that the survival rate of females were much higher than males regrdless of their age.
+Ok so there is nothing to change our prediction.Let's try to explore the other variables and see if we can find anything usefull.
+Time for our first visualization where we will try analyze the **Fare** column.
+```{r,message=FALSE,warning=FALSE,fig.width=11, fig.height=6}
+ggplot(data = train,aes(x = Fare,fill=Sex))+
+  geom_density(alpha=0.6)+
+  scale_x_continuous(breaks = seq(0,200,20),
+                     limits = c(0,200))+
+  xlab("Passenger Fare")+
+  ylab("Density")+
+  ggtitle("Density Plot Of Passenger Fare")+
+  theme(axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        legend.justification = c(0.9,0.9),
+        plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5))
+```
+
+Well from our plot we can clearly say that there were lot's of male passengers who bought a relatively cheaper ticket than the other male and female passengers.Maybe they were travelling alnoe or like **Jack & his friends** or there can be some other reasons also.
+Now it's time for our second visualization.
+In this plot we will use the **Survived** & the **Pclass** variables.These two variables are numerical but in our plot we want to use these two variable as separate categories.For that we need to convert these two variables as factors.
+
+```{r,message=FALSE,warning=FALSE}
+train$Pclass<-as.factor(train$Pclass)
+train$Survived<-as.factor(train$Survived)
+```
+
+Ok now we will make our plot.  
+
+```{r,message=FALSE,warning=FALSE,fig.width=11, fig.height=6}
+ggplot(data = train,aes(x = Pclass,y = Fare,color=Survived))+
+  geom_jitter()+
+  geom_boxplot(outlier.shape = NA,size=0.5,alpha=0.5)+
+  scale_y_continuous(limits = quantile(train$Fare,c(0.25,0.75)))+
+  facet_grid(Survived~.,scales = "free")+
+  xlab("Passenger Class")+
+  ylab("Fare")+
+  ggtitle("Box Plot between Passenger Class & Fare")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
+
+```
+
+From our second plot it's clearly visible that most of the passengers who were travelling in the **3rd class** didn't survived the disaster.Now we will make a similar plot to see the survival rate according to the gender.
+
+```{r,message=FALSE,warning=FALSE,fig.width=11, fig.height=6}
+ggplot(data = train,aes(x = Pclass,y = Fare,color=Sex))+
+  geom_jitter()+
+  geom_boxplot(outlier.shape = NA,size=0.5,alpha=0.5)+
+  scale_y_continuous(limits = quantile(train$Fare,c(0.25,0.75)))+
+  facet_grid(Sex~.,scales = "free")+
+  xlab("Passenger Class")+
+  ylab("Fare")+
+  ggtitle("Box Plot between Passenger Class & Fare")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
+
+```
+
+There were lot's of **female** passengers who were travelling in the **3rd class** didn't survived the disaster.One more thing to notice that many of the the 3rd class **male** & **female** passengers actually paid a higher price to buy a ticket.Well we don't know the reason for that.
+Now it's time to change our prediction.Well from the last two plots it's clearly visible that some of the female passengers who were travelling in **Passenger class 3** and paid a relatively higher price (more than 20$) for their ticket didn't survived the disaster.
+
+```{r,message=FALSE,warning=FALSE}
+test$Survived <- 0
+test$Survived[test$Sex == 'female'] <- 1
+test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
+submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
+write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
+```
+
+We have improved our accuracy by **1.4%**.
+Now we will try to find out if there is any relationship between **Port Of Embarkation** & **Survival Rate**.
+
+```{r,message=FALSE,warning=FALSE}
+train.Embarked<-train %>%
+  filter(Embarked != "") %>%
+  group_by(Embarked,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.Embarked
+```
+
+Let's visualize the above output.
+
+```{r,message=FALSE,warning=FALSE,fig.width=11, fig.height=6}
+ggplot(data = train.Embarked, aes(x = Embarked,y = SurRate , group = Survived)) +
+  geom_col(aes(fill = Survived)) +
+  geom_text(aes(label = paste0(round(SurRate*100,1),"%")), position = position_stack(vjust = 0.5),
+            color="white")+
+  scale_x_discrete(limit = c("C","Q","S"),labels = c("Cherbourg","Queenstowna ","Southampton"))+
+  xlab("Port Of Embarkation")+
+  ylab("Survival rate")+
+  ggtitle("Survival Rate According to Port Of Embarkation")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+
+Now that's really cool.**Cherbourg** has the highest survival Rate followed by **Queenstowna** & **Southampton**.
+
+
 
 
 

@@ -38,8 +38,8 @@ Now that our packages are loaded let's load the datasets.
 
 
 ```r
-train<-read.csv("train.csv",header = T,stringsAsFactors = F)
-test<-read.csv("test.csv",header = T,stringsAsFactors = F)
+train<-read.csv("train.csv",header = T)
+test<-read.csv("test.csv",header = T)
 combined<-bind_rows(train,test)
 ```
 Here we have combined our train and test dataset because before starting model building we will do some feature engineering which will definately increase the accuracy of our model.
@@ -55,15 +55,15 @@ str(train)
 ##  $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
 ##  $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
 ##  $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
-##  $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
-##  $ Sex        : chr  "male" "female" "female" "female" ...
+##  $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+##  $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
 ##  $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
 ##  $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
 ##  $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
-##  $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+##  $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
 ##  $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
-##  $ Cabin      : chr  "" "C85" "" "C123" ...
-##  $ Embarked   : chr  "S" "C" "S" "S" ...
+##  $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+##  $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
 ```
 
 ```r
@@ -74,15 +74,15 @@ str(test)
 ## 'data.frame':	418 obs. of  11 variables:
 ##  $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
 ##  $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
-##  $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
-##  $ Sex        : chr  "male" "female" "male" "male" ...
+##  $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+##  $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
 ##  $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
 ##  $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
 ##  $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
-##  $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+##  $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
 ##  $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
-##  $ Cabin      : chr  "" "" "" "" ...
-##  $ Embarked   : chr  "Q" "S" "Q" "S" ...
+##  $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
 ```
 
 ```r
@@ -95,7 +95,7 @@ str(combined)
 ##  $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
 ##  $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
 ##  $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
-##  $ Sex        : chr  "male" "female" "female" "female" ...
+##  $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
 ##  $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
 ##  $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
 ##  $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
@@ -236,6 +236,178 @@ aggregate(Survived~Child+Sex,data = train,FUN = sum)
 ## 4     1   male       23
 ```
 Here we can see **195** female **Adults** and **38** female children survived whereas **86** male **Adults** and **23** male children survived the disaster.
+Now we are interested to know the proportion again.We can do that by using the following piece of code.
+
+```r
+aggregate(Survived~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
+```
+
+```
+##   Child    Sex  Survived
+## 1     0 female 0.7528958
+## 2     1 female 0.6909091
+## 3     0   male 0.1657033
+## 4     1   male 0.3965517
+```
+Well it's clearly visible that the survival rate of females were much higher than males regrdless of their age.
+Ok so there is nothing to change our prediction.Let's try to explore the other variables and see if we can find anything usefull.
+Time for our first visualization where we will try analyze the **Fare** column.
+
+```r
+ggplot(data = train,aes(x = Fare,fill=Sex))+
+  geom_density(alpha=0.6)+
+  scale_x_continuous(breaks = seq(0,200,20),
+                     limits = c(0,200))+
+  xlab("Passenger Fare")+
+  ylab("Density")+
+  ggtitle("Density Plot Of Passenger Fare")+
+  theme(axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        legend.justification = c(0.9,0.9),
+        plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5))
+```
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-18-1.png)<!-- -->
+
+Well from our plot we can clearly say that there were lot's of male passengers who bought a relatively cheaper ticket than the other male and female passengers.Maybe they were travelling alnoe or like **Jack & his friends** or there can be some other reasons also.
+Now it's time for our second visualization.
+In this plot we will use the **Survived** & the **Pclass** variables.These two variables are numerical but in our plot we want to use these two variable as separate categories.For that we need to convert these two variables as factors.
+
+
+```r
+train$Pclass<-as.factor(train$Pclass)
+train$Survived<-as.factor(train$Survived)
+```
+
+Ok now we will make our plot.  
+
+
+```r
+ggplot(data = train,aes(x = Pclass,y = Fare,color=Survived))+
+  geom_jitter()+
+  geom_boxplot(outlier.shape = NA,size=0.5,alpha=0.5)+
+  scale_y_continuous(limits = quantile(train$Fare,c(0.25,0.75)))+
+  facet_grid(Survived~.,scales = "free")+
+  xlab("Passenger Class")+
+  ylab("Fare")+
+  ggtitle("Box Plot between Passenger Class & Fare")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
+```
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
+
+From our second plot it's clearly visible that most of the passengers who were travelling in the **3rd class** didn't survived the disaster.Now we will make a similar plot to see the survival rate according to the gender.
+
+
+```r
+ggplot(data = train,aes(x = Pclass,y = Fare,color=Sex))+
+  geom_jitter()+
+  geom_boxplot(outlier.shape = NA,size=0.5,alpha=0.5)+
+  scale_y_continuous(limits = quantile(train$Fare,c(0.25,0.75)))+
+  facet_grid(Sex~.,scales = "free")+
+  xlab("Passenger Class")+
+  ylab("Fare")+
+  ggtitle("Box Plot between Passenger Class & Fare")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
+```
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
+
+There were lot's of **female** passengers who were travelling in the **3rd class** didn't survived the disaster.One more thing to notice that many of the the 3rd class **male** & **female** passengers actually paid a higher price to buy a ticket.Well we don't know the reason for that.
+Now it's time to change our prediction.Well from the last two plots it's clearly visible that some of the female passengers who were travelling in **Passenger class 3** and paid a relatively higher price (more than 20$) for their ticket didn't survived the disaster.
+
+
+```r
+test$Survived <- 0
+test$Survived[test$Sex == 'female'] <- 1
+test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
+submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
+write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
+```
+
+We have improved our accuracy by **1.4%**.
+Now we will try to find out if there is any relationship between **Port Of Embarkation** & **Survival Rate**.
+
+
+```r
+train.Embarked<-train %>%
+  filter(Embarked != "") %>%
+  group_by(Embarked,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.Embarked
+```
+
+```
+## Source: local data frame [6 x 4]
+## Groups: Embarked [3]
+## 
+##   Embarked Survived count   SurRate
+##     <fctr>   <fctr> <int>     <dbl>
+## 1        C        0    75 0.4464286
+## 2        C        1    93 0.5535714
+## 3        Q        0    47 0.6103896
+## 4        Q        1    30 0.3896104
+## 5        S        0   427 0.6630435
+## 6        S        1   217 0.3369565
+```
+
+Let's visualize the above output.
+
+
+```r
+ggplot(data = train.Embarked, aes(x = Embarked,y = SurRate , group = Survived)) +
+  geom_col(aes(fill = Survived)) +
+  geom_text(aes(label = paste0(round(SurRate*100,1),"%")), position = position_stack(vjust = 0.5),
+            color="white")+
+  scale_x_discrete(limit = c("C","Q","S"),labels = c("Cherbourg","Queenstowna ","Southampton"))+
+  xlab("Port Of Embarkation")+
+  ylab("Survival rate")+
+  ggtitle("Survival Rate According to Port Of Embarkation")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+
+
+Now that's really cool.**Cherbourg** has the highest survival Rate followed by **Queenstowna** & **Southampton**.
+
+
 
 
 
