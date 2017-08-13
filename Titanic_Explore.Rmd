@@ -256,6 +256,13 @@ ggplot(data = train.Embarked, aes(x = Embarked,y = SurRate , group = Survived)) 
 
 Now that's really cool.**Cherbourg** has the highest survival Rate followed by **Queenstowna** & **Southampton**.
 
+```{r}
+summary(train)
+summary(test)
+str(train)
+str(test)
+```
+
 
 
 
