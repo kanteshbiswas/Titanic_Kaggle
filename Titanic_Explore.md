@@ -260,7 +260,7 @@ ggplot(data = train,aes(x = Fare,fill=Sex))+
                      limits = c(0,200))+
   xlab("Passenger Fare")+
   ylab("Density")+
-  ggtitle("Density Plot Of Passenger Fare")+
+  ggtitle("Fare Distribution By Sex")+
   theme(axis.title.x = element_text(color = "dodgerblue4",size = 20),
         axis.title.y = element_text(color = "dodgerblue4",size = 20),
         axis.text.x = element_text(size = 15),
@@ -275,6 +275,28 @@ ggplot(data = train,aes(x = Fare,fill=Sex))+
 ![](Titanic_Explore_files/figure-html/unnamed-chunk-18-1.png)<!-- -->
 
 Well from our plot we can clearly say that there were lot's of male passengers who bought a relatively cheaper ticket than the other male and female passengers.Maybe they were travelling alnoe or like **Jack & his friends** or there can be some other reasons also.
+
+```r
+ggplot(data = train,aes(x = Fare,fill=Survived))+
+  geom_density(alpha=0.6)+
+  scale_x_continuous(breaks = seq(0,200,20),
+                     limits = c(0,200))+
+  xlab("Passenger Fare")+
+  ylab("Density")+
+  ggtitle("Fare Distribution By survival")+
+  theme(axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = c(0.9,0.9),
+        legend.justification = c(0.9,0.9),
+        plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5))
+```
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
+From this plot it is clearly visible that most of the passengers who bought a relatively cheaper ticket didn't survived the disaster. 
 Now it's time for our second visualization.
 In this plot we will use the **Survived** & the **Pclass** variables.These two variables are numerical but in our plot we want to use these two variable as separate categories.For that we need to convert these two variables as factors.
 
@@ -309,7 +331,7 @@ ggplot(data = train,aes(x = Pclass,y = Fare,color=Survived))+
         legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
 ```
 
-![](Titanic_Explore_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
+![](Titanic_Explore_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
 
 From our second plot it's clearly visible that most of the passengers who were travelling in the **3rd class** didn't survived the disaster.Now we will make a similar plot to see the survival rate according to the gender.
 
@@ -336,7 +358,7 @@ ggplot(data = train,aes(x = Pclass,y = Fare,color=Sex))+
         legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
 ```
 
-![](Titanic_Explore_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
+![](Titanic_Explore_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
 
 There were lot's of **female** passengers who were travelling in the **3rd class** didn't survived the disaster.One more thing to notice that many of the the 3rd class **male** & **female** passengers actually paid a higher price to buy a ticket.Well we don't know the reason for that.
 Now it's time to change our prediction.Well from the last two plots it's clearly visible that some of the female passengers who were travelling in **Passenger class 3** and paid a relatively higher price (more than 20$) for their ticket didn't survived the disaster.
@@ -402,130 +424,14 @@ ggplot(data = train.Embarked, aes(x = Embarked,y = SurRate , group = Survived)) 
         panel.grid.minor = element_blank())
 ```
 
-![](Titanic_Explore_files/figure-html/unnamed-chunk-24-1.png)<!-- -->
+![](Titanic_Explore_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 
 Now that's really cool.**Cherbourg** has the highest survival Rate followed by **Queenstowna** & **Southampton**.
 
 
-```r
-summary(train)
-```
 
-```
-##   PassengerId    Survived Pclass 
-##  Min.   :  1.0   0:549    1:216  
-##  1st Qu.:223.5   1:342    2:184  
-##  Median :446.0            3:491  
-##  Mean   :446.0                   
-##  3rd Qu.:668.5                   
-##  Max.   :891.0                   
-##                                  
-##                                     Name         Sex           Age       
-##  Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
-##  Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
-##  Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
-##  Abelson, Mr. Samuel                  :  1                Mean   :29.70  
-##  Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
-##  Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
-##  (Other)                              :885                NA's   :177    
-##      SibSp           Parch             Ticket         Fare       
-##  Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
-##  1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
-##  Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
-##  Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
-##  3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
-##  Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
-##                                   (Other) :852                   
-##          Cabin     Embarked     Child       
-##             :687    :  2    Min.   :0.0000  
-##  B96 B98    :  4   C:168    1st Qu.:0.0000  
-##  C23 C25 C27:  4   Q: 77    Median :0.0000  
-##  G6         :  4   S:644    Mean   :0.1268  
-##  C22 C26    :  3            3rd Qu.:0.0000  
-##  D          :  3            Max.   :1.0000  
-##  (Other)    :186
-```
 
-```r
-summary(test)
-```
-
-```
-##   PassengerId         Pclass     
-##  Min.   : 892.0   Min.   :1.000  
-##  1st Qu.: 996.2   1st Qu.:1.000  
-##  Median :1100.5   Median :3.000  
-##  Mean   :1100.5   Mean   :2.266  
-##  3rd Qu.:1204.8   3rd Qu.:3.000  
-##  Max.   :1309.0   Max.   :3.000  
-##                                  
-##                                         Name         Sex     
-##  Abbott, Master. Eugene Joseph            :  1   female:152  
-##  Abelseth, Miss. Karen Marie              :  1   male  :266  
-##  Abelseth, Mr. Olaus Jorgensen            :  1               
-##  Abrahamsson, Mr. Abraham August Johannes :  1               
-##  Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1               
-##  Aks, Master. Philip Frank                :  1               
-##  (Other)                                  :412               
-##       Age            SibSp            Parch             Ticket   
-##  Min.   : 0.17   Min.   :0.0000   Min.   :0.0000   PC 17608:  5  
-##  1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4  
-##  Median :27.00   Median :0.0000   Median :0.0000   CA. 2343:  4  
-##  Mean   :30.27   Mean   :0.4474   Mean   :0.3923   16966   :  3  
-##  3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3  
-##  Max.   :76.00   Max.   :8.0000   Max.   :9.0000   347077  :  3  
-##  NA's   :86                                        (Other) :396  
-##       Fare                     Cabin     Embarked    Survived     
-##  Min.   :  0.000                  :327   C:102    Min.   :0.0000  
-##  1st Qu.:  7.896   B57 B59 B63 B66:  3   Q: 46    1st Qu.:0.0000  
-##  Median : 14.454   A34            :  2   S:270    Median :0.0000  
-##  Mean   : 35.627   B45            :  2            Mean   :0.3373  
-##  3rd Qu.: 31.500   C101           :  2            3rd Qu.:1.0000  
-##  Max.   :512.329   C116           :  2            Max.   :1.0000  
-##  NA's   :1         (Other)        : 80
-```
-
-```r
-str(train)
-```
-
-```
-## 'data.frame':	891 obs. of  13 variables:
-##  $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
-##  $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
-##  $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
-##  $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
-##  $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
-##  $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
-##  $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
-##  $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
-##  $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
-##  $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
-##  $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
-##  $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
-##  $ Child      : num  0 0 0 0 0 0 0 1 0 1 ...
-```
-
-```r
-str(test)
-```
-
-```
-## 'data.frame':	418 obs. of  12 variables:
-##  $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
-##  $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
-##  $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
-##  $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
-##  $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
-##  $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
-##  $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
-##  $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
-##  $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
-##  $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
-##  $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
-##  $ Survived   : num  0 1 0 0 1 0 1 0 1 0 ...
-```
 
 
 
