@@ -107,14 +107,6 @@ str(combined)
 
 Notice that in our test dataset there is no survived column because that's how kaggle works we need to predict the survival rate on the test dataset.
 
-We will make **Survived** & **Pclass** variables as factors which will be very usefull at the time of making visualizations. 
-
-
-```r
-train$Pclass<-as.factor(train$Pclass)
-train$Survived<-as.factor(train$Survived)
-```
-
 Let's check how many people have survived in our training dataset.
 
 
@@ -244,15 +236,15 @@ Aggregate function is very usefull when we want to apply a specific command for 
 
 
 ```r
-aggregate(as.numeric(Survived)~Child+Sex,data = train,FUN = length)
+aggregate(Survived~Child+Sex,data = train,FUN = length)
 ```
 
 ```
-##   Child    Sex as.numeric(Survived)
-## 1     0 female                  259
-## 2     1 female                   55
-## 3     0   male                  519
-## 4     1   male                   58
+##   Child    Sex Survived
+## 1     0 female      259
+## 2     1 female       55
+## 3     0   male      519
+## 4     1   male       58
 ```
 
 There are 259 female and 519 male adults in our dataset.Similarly 55 female and 58 male children are there.
@@ -260,36 +252,45 @@ Now we will find out how many male and female children survived the disaster.
 
 
 ```r
-aggregate(as.numeric(Survived)~Child+Sex,data = train,FUN = sum)
+aggregate(Survived~Child+Sex,data = train,FUN = sum)
 ```
 
 ```
-##   Child    Sex as.numeric(Survived)
-## 1     0 female                  454
-## 2     1 female                   93
-## 3     0   male                  605
-## 4     1   male                   81
+##   Child    Sex Survived
+## 1     0 female      195
+## 2     1 female       38
+## 3     0   male       86
+## 4     1   male       23
 ```
 
+The **sum** function will give us the sum of the total passengers in each age group regardless of their survival status.
 Here we can see **195** female **Adults** and **38** female children survived whereas **86** male **Adults** and **23** male children survived the disaster.
 Now we are interested to know the proportion again.We can do that by using the following piece of code.
 
 
 ```r
-aggregate(as.numeric(Survived)~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
+aggregate(Survived~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
 ```
 
 ```
-##   Child    Sex as.numeric(Survived)
-## 1     0 female             1.752896
-## 2     1 female             1.690909
-## 3     0   male             1.165703
-## 4     1   male             1.396552
+##   Child    Sex  Survived
+## 1     0 female 0.7528958
+## 2     1 female 0.6909091
+## 3     0   male 0.1657033
+## 4     1   male 0.3965517
 ```
 
 Well it's clearly visible that the survival rate of females were much higher than males regrdless of their age.
 Ok so there is nothing to change our prediction.Let's try to explore the other variables and see if we can find anything usefull.
 Time for our first visualization where we will try analyze the **Fare** column.
+Before proceeding we will make the Survived and Pclass variable as factors which will be very usefull for our visualization.
+
+
+
+```r
+train$Pclass<-as.factor(train$Pclass)
+train$Survived<-as.factor(train$Survived)
+```
 
 ***
 
@@ -320,7 +321,6 @@ We will make one more plot which is similar to this plot but this time we will u
 * This plot tells us a lot of things.
     + Mean fare for Passenger class 3 was much lower than the other two classes.
     + Some of the passengers bought expensive ticket,but still they were travelling in Passenger Class 3.
-    + Also passenger class 3 has the lowest survival rate.
 
 Time for our next plot to check the number of male & female passengers in each class.
 
@@ -422,21 +422,81 @@ train.Embarked
 
 ***
 
-Let's find out the impact on survival rate of a passenger who has a sibling onboard.
+Let's find out the impact on survival rate of a passenger who has siblings onboard.
 
-***
 
-![](Titanic_Explore_files/figure-html/unnamed-chunk-28-1.png)<!-- -->
+```r
+train.SibSp<-train %>%
+  group_by(SibSp,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.SibSp
+```
 
-Well it looks like passengers with more siblings onboard are less likely to **Survive**.
+```
+## Source: local data frame [12 x 4]
+## Groups: SibSp [7]
+## 
+##    SibSp Survived count   SurRate
+##    <int>   <fctr> <int>     <dbl>
+## 1      0        0   398 0.6546053
+## 2      0        1   210 0.3453947
+## 3      1        0    97 0.4641148
+## 4      1        1   112 0.5358852
+## 5      2        0    15 0.5357143
+## 6      2        1    13 0.4642857
+## 7      3        0    12 0.7500000
+## 8      3        1     4 0.2500000
+## 9      4        0    15 0.8333333
+## 10     4        1     3 0.1666667
+## 11     5        0     5 1.0000000
+## 12     8        0     7 1.0000000
+```
 
-We are going to make a similar plot but this time we want to see the impact on survival rate of a passenger who has Parents/Children onboard.
 
 ***
 
 ![](Titanic_Explore_files/figure-html/unnamed-chunk-29-1.png)<!-- -->
 
-This plot is not that usefull but it can be used to derive new features.
+Well it looks like passengers with more siblings onboard are less likely to **Survive**.
+
+We are going to make a similar plot but this time we want to see the impact on survival rate of a passenger who has Parents/Children onboard.
+
+
+```r
+train.Parch<-train %>%
+  group_by(Parch,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.Parch
+```
+
+```
+## Source: local data frame [12 x 4]
+## Groups: Parch [7]
+## 
+##    Parch Survived count   SurRate
+##    <int>   <fctr> <int>     <dbl>
+## 1      0        0   445 0.6563422
+## 2      0        1   233 0.3436578
+## 3      1        0    53 0.4491525
+## 4      1        1    65 0.5508475
+## 5      2        0    40 0.5000000
+## 6      2        1    40 0.5000000
+## 7      3        0     2 0.4000000
+## 8      3        1     3 0.6000000
+## 9      4        0     4 1.0000000
+## 10     5        0     4 0.8000000
+## 11     5        1     1 0.2000000
+## 12     6        0     1 1.0000000
+```
+
+***
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-31-1.png)<!-- -->
+
+The output of this plot is also very similar to the previous one.**Passengers** with less number of **Parents/Childrens** onboard are more likely to survive.
+Well we can use the **Parch** variable to analyze the impact on survival rate for **male** passengers who has more than 2 relationships.
 
 
 ```r
@@ -464,35 +524,61 @@ train.Parch
 ## 8     4        0     2 1.0000000
 ## 9     5        0     1 1.0000000
 ```
-![](Titanic_Explore_files/figure-html/unnamed-chunk-31-1.png)<!-- -->
+![](Titanic_Explore_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
 
 ***
 
 Well it seems like none of the male with more than 2 **Parent/children** survived the disaster as compared to the other males onboard.
 
-We will make a new feature **Family** & then we will try to see if there is any relationship between **Family Size** & **Survival Rate**.
+We will make a new feature **Family Size** & then we will try to see if there is any relationship between **Family Size** & **Survival Rate**.
+
 
 
 ```r
 train$FamilySize<-train$SibSp+train$Parch+1
-head(train,n=3)
+```
+
+
+
+```r
+train.FamilySize<-train %>%
+  group_by(FamilySize,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.FamilySize
 ```
 
 ```
-##   PassengerId Survived Pclass
-## 1           1        0      3
-## 2           2        1      1
-## 3           3        1      3
-##                                                  Name    Sex Age SibSp
-## 1                             Braund, Mr. Owen Harris   male  22     1
-## 2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1
-## 3                              Heikkinen, Miss. Laina female  26     0
-##   Parch           Ticket    Fare Cabin Embarked Child FamilySize
-## 1     0        A/5 21171  7.2500              S     0          2
-## 2     0         PC 17599 71.2833   C85        C     0          2
-## 3     0 STON/O2. 3101282  7.9250              S     0          1
+## Source: local data frame [16 x 4]
+## Groups: FamilySize [9]
+## 
+##    FamilySize Survived count   SurRate
+##         <dbl>   <fctr> <int>     <dbl>
+## 1           1        0   374 0.6964618
+## 2           1        1   163 0.3035382
+## 3           2        0    72 0.4472050
+## 4           2        1    89 0.5527950
+## 5           3        0    43 0.4215686
+## 6           3        1    59 0.5784314
+## 7           4        0     8 0.2758621
+## 8           4        1    21 0.7241379
+## 9           5        0    12 0.8000000
+## 10          5        1     3 0.2000000
+## 11          6        0    19 0.8636364
+## 12          6        1     3 0.1363636
+## 13          7        0     8 0.6666667
+## 14          7        1     4 0.3333333
+## 15          8        0     6 1.0000000
+## 16         11        0     7 1.0000000
 ```
 
+***
+
+![](Titanic_Explore_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
+
+***
+
+Well it's clearly visible that **Smaller families** are more lkely to survive disaster.
 
 To better understand the relationship between **Family size** & **Survival Rate** we will make a new visualization.
 
@@ -532,11 +618,49 @@ train.FamilySize
 
 ***
 
-![](Titanic_Explore_files/figure-html/unnamed-chunk-34-1.png)<!-- -->
+![](Titanic_Explore_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
 
 ***
 
-That's the beauty of visualization.Till now we were thinking that **the chances of survival is vey high for a solo traveller** but in reality it was not.**69.6%** of solo traveller died on that night & the survival rate was highest with a **family size of 4**. 
+That's the beauty of visualization.Till now we were thinking that **the chances of survival is vey high for a solo traveller** but in reality it was not.**69.6%** of solo traveller died on that night.
+
+Chances of survival was much higher for a relatively small family.
+
+* We will create a new feature **FamilyId** where will group the families according to their size.
+    + Family size **1** represent **singleton**.
+    + Family size of **2**,**3** & **4** represent **small** families whose chances of survial was much higher.
+    + Chances of survival was much lower for families with more than **5** members.We will call these families **large**.
+    
+
+```r
+train$FamilyId[train$FamilySize == 1] <- 'singleton'
+train$FamilyId[train$FamilySize < 5 & train$FamilySize > 1] <- 'small'
+train$FamilyId[train$FamilySize > 4] <- 'large'
+table(train$FamilyId)
+```
+
+```
+## 
+##     large singleton     small 
+##        62       537       292
+```
+
+
+
+
+
+
+
+
+Now it's time for some feature engineering **name**,**cabin** & **ticket number** were all unique to each passenger.Perhaps we can use these variables to create some new features which will eventually boost the performance of our machine learning model.
+
+We will start with the Name variable.
+
+
+
+
+
+
 
 
 

@@ -58,13 +58,6 @@ str(combined)
 
 Notice that in our test dataset there is no survived column because that's how kaggle works we need to predict the survival rate on the test dataset.
 
-We will make **Survived** & **Pclass** variables as factors which will be very usefull at the time of making visualizations. 
-
-```{r, message=FALSE, warning=FALSE}
-train$Pclass<-as.factor(train$Pclass)
-train$Survived<-as.factor(train$Survived)
-```
-
 Let's check how many people have survived in our training dataset.
 
 ```{r,message=FALSE,warning=FALSE}
@@ -145,26 +138,34 @@ Let's find out the number of **Adults** and **Childrens** in our dataset by gend
 Aggregate function is very usefull when we want to apply a specific command for groups.
 
 ```{r,message=FALSE,warning=FALSE}
-aggregate(as.numeric(Survived)~Child+Sex,data = train,FUN = length)
+aggregate(Survived~Child+Sex,data = train,FUN = length)
 ```
 
 There are 259 female and 519 male adults in our dataset.Similarly 55 female and 58 male children are there.
 Now we will find out how many male and female children survived the disaster.
 
 ```{r,message=FALSE,warning=FALSE}
-aggregate(as.numeric(Survived)~Child+Sex,data = train,FUN = sum)
+aggregate(Survived~Child+Sex,data = train,FUN = sum)
 ```
 
+The **sum** function will give us the sum of the total passengers in each age group regardless of their survival status.
 Here we can see **195** female **Adults** and **38** female children survived whereas **86** male **Adults** and **23** male children survived the disaster.
 Now we are interested to know the proportion again.We can do that by using the following piece of code.
 
 ```{r,message=FALSE,warning=FALSE}
-aggregate(as.numeric(Survived)~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
+aggregate(Survived~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
 ```
 
 Well it's clearly visible that the survival rate of females were much higher than males regrdless of their age.
 Ok so there is nothing to change our prediction.Let's try to explore the other variables and see if we can find anything usefull.
 Time for our first visualization where we will try analyze the **Fare** column.
+Before proceeding we will make the Survived and Pclass variable as factors which will be very usefull for our visualization.
+
+
+```{r, message=FALSE, warning=FALSE}
+train$Pclass<-as.factor(train$Pclass)
+train$Survived<-as.factor(train$Survived)
+```
 
 ***
 
@@ -250,7 +251,6 @@ ggplot(data = train,aes(x = Pclass,y = Fare,color=Survived))+
 * This plot tells us a lot of things.
     + Mean fare for Passenger class 3 was much lower than the other two classes.
     + Some of the passengers bought expensive ticket,but still they were travelling in Passenger Class 3.
-    + Also passenger class 3 has the lowest survival rate.
 
 Time for our next plot to check the number of male & female passengers in each class.
 
@@ -382,13 +382,24 @@ ggplot(data = train.Embarked, aes(x = Embarked,y = SurRate , group = Survived)) 
 
 ***
 
-Let's find out the impact on survival rate of a passenger who has a sibling onboard.
+Let's find out the impact on survival rate of a passenger who has siblings onboard.
+
+```{r, message=FALSE, warning=FALSE}
+train.SibSp<-train %>%
+  group_by(SibSp,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.SibSp
+```
+
 
 ***
 
 ```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
-ggplot(data = train,aes(x = SibSp,fill=Survived))+
-  geom_bar()+
+ggplot(data = train.SibSp,aes(x = SibSp,y = count))+
+  geom_col(aes(fill=Survived))+
+  facet_wrap(~Survived)+
+  geom_text(aes(label=count),vjust=-0.3)+
   xlab("Number Of Siblings")+
   ylab("Number Of Passengers")+
   ggtitle("Survivors with Siblings")+
@@ -401,24 +412,32 @@ ggplot(data = train,aes(x = SibSp,fill=Survived))+
         legend.title = element_text(color = "dodgerblue4",size = 20),
         legend.text = element_text(size = 15),
         legend.position = "top",
-        legend.direction = "horizontal",
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
+        legend.direction = "horizontal")
 ```
 
 Well it looks like passengers with more siblings onboard are less likely to **Survive**.
 
 We are going to make a similar plot but this time we want to see the impact on survival rate of a passenger who has Parents/Children onboard.
 
+```{r, message=FALSE, warning=FALSE}
+train.Parch<-train %>%
+  group_by(Parch,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.Parch
+```
+
 ***
 
 ```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
-ggplot(data = train,aes(x = Parch,fill=Survived))+
-  geom_bar()+
-  xlab("Number Of Parents/Children")+
+ggplot(data = train.Parch,aes(x = Parch,y = count))+
+  geom_col(aes(fill=Survived))+
+  facet_wrap(~Survived)+
+  geom_text(aes(label=count),vjust=-0.3)+
+  xlab("Number Of Parents/Childrens")+
   ylab("Number Of Passengers")+
-  ggtitle("Survivors with Parents/Children")+
-  scale_x_discrete(limit = c(0:8))+
+  ggtitle("Survivors with Parents/Childrens")+
+  scale_x_discrete(limit = c(0:6))+
   theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
         axis.title.x = element_text(color = "dodgerblue4",size = 20),
         axis.title.y = element_text(color = "dodgerblue4",size = 20),
@@ -427,12 +446,12 @@ ggplot(data = train,aes(x = Parch,fill=Survived))+
         legend.title = element_text(color = "dodgerblue4",size = 20),
         legend.text = element_text(size = 15),
         legend.position = "top",
-        legend.direction = "horizontal",
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
+        legend.direction = "horizontal")
+
 ```
 
-This plot is not that usefull but it can be used to derive new features.
+The output of this plot is also very similar to the previous one.**Passengers** with less number of **Parents/Childrens** onboard are more likely to survive.
+Well we can use the **Parch** variable to analyze the impact on survival rate for **male** passengers who has more than 2 relationships.
 
 ```{r, message=FALSE, warning=FALSE}
 train.Parch<-train %>%
@@ -468,13 +487,47 @@ ggplot(data = train.Parch,aes(x = Parch,y = SurRate,group=Survived))+
 
 Well it seems like none of the male with more than 2 **Parent/children** survived the disaster as compared to the other males onboard.
 
-We will make a new feature **Family** & then we will try to see if there is any relationship between **Family Size** & **Survival Rate**.
+We will make a new feature **Family Size** & then we will try to see if there is any relationship between **Family Size** & **Survival Rate**.
+
 
 ```{r, message=FALSE, warning=FALSE}
 train$FamilySize<-train$SibSp+train$Parch+1
-head(train,n=3)
 ```
 
+
+```{r, message=FALSE, warning=FALSE}
+train.FamilySize<-train %>%
+  group_by(FamilySize,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+train.FamilySize
+```
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+ggplot(data = train.FamilySize,aes(x = FamilySize,y = count))+
+  geom_col(aes(fill=Survived))+
+  facet_wrap(~Survived)+
+  geom_text(aes(label=count),vjust=-0.3)+
+  xlab("Size Of Family")+
+  ylab("Number Of Passengers")+
+  ggtitle("Survival Count According To Family size")+
+  scale_x_discrete(limit = c(1:11))+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal")
+```
+
+***
+
+Well it's clearly visible that **Smaller families** are more lkely to survive disaster.
 
 To better understand the relationship between **Family size** & **Survival Rate** we will make a new visualization.
 
@@ -514,7 +567,38 @@ ggplot(data = train.FamilySize,aes(x = FamilySize,y = SurRate,group=Survived))+
 
 ***
 
-That's the beauty of visualization.Till now we were thinking that **the chances of survival is vey high for a solo traveller** but in reality it was not.**69.6%** of solo traveller died on that night & the survival rate was highest with a **family size of 4**. 
+That's the beauty of visualization.Till now we were thinking that **the chances of survival is vey high for a solo traveller** but in reality it was not.**69.6%** of solo traveller died on that night.
+
+Chances of survival was much higher for a relatively small family.
+
+* We will create a new feature **FamilyId** where will group the families according to their size.
+    + Family size **1** represent **singleton**.
+    + Family size of **2**,**3** & **4** represent **small** families whose chances of survial was much higher.
+    + Chances of survival was much lower for families with more than **5** members.We will call these families **large**.
+    
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE}
+train$FamilyId[train$FamilySize == 1] <- 'singleton'
+train$FamilyId[train$FamilySize < 5 & train$FamilySize > 1] <- 'small'
+train$FamilyId[train$FamilySize > 4] <- 'large'
+table(train$FamilyId)
+```
+
+
+
+
+
+
+
+
+Now it's time for some feature engineering **name**,**cabin** & **ticket number** were all unique to each passenger.Perhaps we can use these variables to create some new features which will eventually boost the performance of our machine learning model.
+
+We will start with the Name variable.
+
+
+
+
+
+
 
 
 
