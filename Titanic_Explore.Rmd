@@ -4,6 +4,7 @@ author: "Kantesh Biswas"
 date: "August 4, 2017"
 output: 
   html_document: 
+    fig_caption: yes
     keep_md: yes
 ---
 
@@ -38,6 +39,9 @@ library(ggplot2)
 library(dplyr)
 library(mice)
 library(randomForest)
+library(scales)
+library(gridExtra)
+library(knitr)
 ```
 
 Now that our packages are loaded let's load the datasets.
@@ -51,12 +55,20 @@ Here we have combined our train and test dataset because before starting model b
 Since the datasets are loaded let's have a look at the structures of our datasets.
 
 ```{r,message=FALSE,warning=FALSE}
-str(train)
-str(test)
 str(combined)
 ```
 
-Notice that in our test dataset there is no survived column because that's how kaggle works we need to predict the survival rate on the test dataset.
+We will convert **Survived**,**Pclass** & **Embarked** variable as **factors** which will be very usefull for our future analysis.
+
+```{r, message=FALSE, warning=FALSE}
+combined$Survived<-as.factor(combined$Survived)
+combined$Embarked<-as.factor(combined$Embarked)
+combined$Pclass<-as.factor(combined$Pclass)
+train$Survived<-as.factor(train$Survived)
+train$Embarked<-as.factor(train$Embarked)
+train$Pclass<-as.factor(train$Pclass)
+```
+
 
 Let's check how many people have survived in our training dataset.
 
@@ -70,30 +82,14 @@ table(train$Survived)
 prop.table(table(train$Survived))
 ```
 
-We can see that 38% of people has survived the disaster.That means most of the people abroad were perished.
-Now let's make our first prediction,since most people died in our training set,perhaps we can assume that everyone in the test set also died.
-So let's add our first prediction to the test set.
+We can see that 38% of people has survived the disaster.That means most of the people abroad were perished. Let's check the number of male and female passengers in our training dataset.
 
-```{r,message=FALSE,warning=FALSE}
-test$Survived<-rep(0,418)
-```
-
-We need to submit a csv file with PassengerId and survived column to **Kaggle**.
-So let's prepare our submission file.
-
-```{r,message=FALSE,warning=FALSE}
-submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
-write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
-```
-
-Here we have excluded the row numbers oterwise kaggle will reject our submission.
-As we know that at the time of the disaster women and children were saved first.Let's try to find that out.
 
 ```{r,message=FALSE,warning=FALSE}
 table(train$Sex)
 ```
 
-We can see that the majority of the passengers were male.Now let's find out the proportion of male and female passengers that survived the disaster.
+Well majority of the passengers were male.Now let's find out the proportion of male and female passengers that survived the disaster.
 
 ```{r,message=FALSE,warning=FALSE}
 prop.table(table(train$Sex,train$Survived))
@@ -105,72 +101,300 @@ By default the proportion table command takes each entry in the table and divide
 prop.table(table(train$Sex,train$Survived),1)
 ```
 
-Well we can see that a very low percentage of male survived whereas majority of females abroad were survived.
-Let's update our old prediction and mark all the females passenger in our test dataset as survived.
+Very low percentage of male survived whereas majority of females abroad were survived.
 
-```{r,message=FALSE,warning=FALSE}
-test$Survived<-0
-test$Survived[test$Sex=='female']<-1
-```
-
-Ok now we need to update our submission file also.
-
-```{r,message=FALSE,warning=FALSE}
-submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
-write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
-```
-
-Now let's look into the age variable.
-
-```{r,message=FALSE,warning=FALSE}
-summary(train$Age)
-```
-
-There are 177 NA values.We will impute those NA values with the mean age of the rest of the passengers.
-Let's create a new variable to find out if the passenger was below 18 or not.
-
-```{r,message=FALSE,warning=FALSE}
-train$Child<-0
-train$Child[train$Age<18]<-1
-```
-
-Let's find out the number of **Adults** and **Childrens** in our dataset by gender.
-Aggregate function is very usefull when we want to apply a specific command for groups.
-
-```{r,message=FALSE,warning=FALSE}
-aggregate(Survived~Child+Sex,data = train,FUN = length)
-```
-
-There are 259 female and 519 male adults in our dataset.Similarly 55 female and 58 male children are there.
-Now we will find out how many male and female children survived the disaster.
-
-```{r,message=FALSE,warning=FALSE}
-aggregate(Survived~Child+Sex,data = train,FUN = sum)
-```
-
-The **sum** function will give us the sum of the total passengers in each age group regardless of their survival status.
-Here we can see **195** female **Adults** and **38** female children survived whereas **86** male **Adults** and **23** male children survived the disaster.
-Now we are interested to know the proportion again.We can do that by using the following piece of code.
-
-```{r,message=FALSE,warning=FALSE}
-aggregate(Survived~Child+Sex,data = train,FUN = function(x){sum(x)/length(x)})
-```
-
-Well it's clearly visible that the survival rate of females were much higher than males regrdless of their age.
-Ok so there is nothing to change our prediction.Let's try to explore the other variables and see if we can find anything usefull.
-Time for our first visualization where we will try analyze the **Fare** column.
-Before proceeding we will make the Survived and Pclass variable as factors which will be very usefull for our visualization.
-
+First we are going to check the **Embarked** variable because that's where the journey begins.
 
 ```{r, message=FALSE, warning=FALSE}
-train$Pclass<-as.factor(train$Pclass)
-train$Survived<-as.factor(train$Survived)
+table(train$Embarked)
+table(combined$Embarked)
+```
+
+There are no embarkment details for two Passengers in our train dataset. Let's find out their details.
+
+```{r, message=FALSE, warning=FALSE}
+train[train$Embarked=="",]
+```
+
+Well the passenger id's are **62** & **830**.
+Maybe we can guess their embarkment details by looking at the Passenger class in which they were travelling and the amount which they have paid for their ticket.
+
+```{r, message=FALSE, warning=FALSE}
+train$Fare[train$Embarked == ""]
+train$Pclass[train$Embarked == ""]
+```
+
+Both of them paid **80$** & were travelling in **Passenger clas 1**.
+
+Time for our first visualization.
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+EFare<-train %>%
+  filter(PassengerId != 62 & PassengerId != 830)
+
+ggplot(data = EFare,aes(x = Embarked,y = Fare,fill = Pclass))+
+  geom_boxplot()+
+  geom_hline(aes(yintercept=80), 
+    colour='lawngreen', linetype='dashed', lwd=1) +
+  scale_y_continuous(labels=dollar_format())+
+  xlab("Embarked")+
+  ylab("Fare")+
+  ggtitle("Passenger Fare Vs Embarkment & Passenger Class")+
+  theme(axis.title.x = element_text(color = "dodgerblue4",size = 25),
+        axis.title.y = element_text(color = "dodgerblue4",size = 25),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 25),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5))
 ```
 
 ***
 
+Well the median fare for Passenger class 1 is 80 dollar & both of the passengers paid 80 dollar.So we can impute those missing values with **Cherbourg** .
+
+```{r, message=FALSE, warning=FALSE}
+train$Embarked[c(62, 830)] <- 'C'
+```
+
+Let's check the summary of our combined dataset so that we will get an clear idea about the missing values.
+
+```{r, message=FALSE, warning=FALSE}
+summary(combined)
+```
+
+Fare column has one missing values.Let's find out the details of that passenger.
+
+```{r, message=FALSE, warning=FALSE}
+which(is.na(combined$Fare))
+combined[1044,]
+```
+
+Well the passenger was travelling in Passenger class 3 & his boarding point was Southampton.
+So we can impute that missing value using the median fare of all the passengers who were travelling in passenger class 3 & boarded the ship from Southampton.
+
+```{r, message=FALSE, warning=FALSE}
+combined$Fare[1044]<-median(combined[combined$Pclass == '3' & combined$Embarked == 'S',]$Fare,na.rm = TRUE)
+```
+
+We will start imputing the missing values in the age variable.We will work with the combined dataset because so that we don't have to repeat the same process for our test dataset.
+
+```{r,message=FALSE,warning=FALSE}
+summary(combined$Age)
+```
+
+There are 263 NA values.Let's impute all those NA values.We will use **Mice** package for imputation.
+
+```{r, message=FALSE, warning=FALSE}
+md.pattern(combined)
+```
+
+* We are not going to use the following variables for our imputation process.
+    + PassengerId
+    + Name
+    + Ticket
+    + Cabin
+    + Survived
+
+```{r, message=FALSE, warning=FALSE,results='hide'}
+imp<-mice(combined[,!names(combined) %in% c("PassengerId","Name","Ticket","Cabin","Survived")],method = "rf")
+```
+
+Let's have a look at the imputed values for **age** variable.
+
+```{r, message=FALSE, warning=FALSE}
+head(imp$imp$Age)
+```
+
+```{r, message=FALSE, warning=FALSE}
+MiceOutput<-complete(imp)
+```
+
+Let's compare the output of **Mice** with our original data to ensure that we have correctly imputed the missing values.
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+OriginalAge<-ggplot(data = combined,aes(x = Age))+
+  geom_histogram(fill="cadetblue2")+
+  xlab("Age")+
+  ylab("Density")+
+  ggtitle("Distribution Of Original Age")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15))
+
+MiceAge<-ggplot(data = MiceOutput,aes(x = Age))+
+  geom_histogram(fill="cadetblue2")+
+  xlab("Age")+
+  ylab("Density")+
+  ggtitle("Distribution Of Mice Output")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15))
+
+grid.arrange(OriginalAge,MiceAge)
+```
+
+***
+
+Look's good.Now we will replace our **Age** column in the original data with the **Mice** output. 
+
+```{r, message=FALSE, warning=FALSE}
+combined$Age<-MiceOutput$Age
+```
+
+Let's cross check if there is any missing values left behind.
+
+```{r, message=FALSE, warning=FALSE}
+sum(is.na(combined$Age))
+```
+
+Our age variable is complete now.Let's visualize it to see if we can find any new insights.
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+ggplot(data = combined[1:891,],aes(x = Age,fill=Survived))+
+  geom_histogram()+
+  facet_grid(~Sex)+
+  xlab("Age")+
+  ylab("Number Of Passengers")+
+  ggtitle("Distribution Of Age By Sex")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal",
+        strip.text.x = element_text(size = 15, colour = "dodgerblue4"))
+```
+
+***
+
+Look's great.It's clearly visible that the chances of survival is much higher for **female** passengers regardless of their age.
+
+Titanic was also famous for rescuing the childrens and mothers first,maybe we can use that concept.We will add two new features **Child** & **Mother** to our dataset.For child variable we will simply compare the age with **18**.If it is less than 18 then we will call that passenger a **Child** otherwise **Adult** and a mother will be a **female** passenger whose age is more than **18**,who has more than **0** children and does not have the title **Miss**. That means before proceeding we have to take the names column and extract the **titles**.
+
+```{r, message=FALSE, warning=FALSE}
+combined$Name<-as.character(combined$Name)
+combined$Title<-sapply(combined$Name,FUN = function(x){strsplit(x,split = '[,.]')[[1]][2]})
+combined$Title<-sub(' ','',combined$Title)
+combined$Title<-as.factor(combined$Title)
+levels(combined$Title)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+summary(combined$Title)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+table(combined$Sex,combined$Title)
+```
+
+We can group some of the titles so that it will be easier to interpret.
+
+```{r, message=FALSE, warning=FALSE}
+combined$Title[combined$Title %in% c('Rev','Jonkheer', 'Major', 'Master', 'Capt', 'Col', 'Don')] <- 'Sir'
+combined$Title[combined$Title %in% c('the Countess','Dona')] <- 'Lady'
+combined$Title[combined$Title %in% c('Mlle', 'Ms')] <- 'Miss'
+combined$Title[combined$Title == 'Mme'] <- 'Mrs'
+combined$Title[combined$Title == 'Dr' & combined$Sex == 'female'] <- 'Miss'
+combined$Title[combined$Title == 'Dr' & combined$Sex == 'male'] <- 'Sir'
+levels(combined$Title)
+combined$Title<-droplevels(combined$Title)
+summary(combined$Title)
+```
+
+Now we can create our 2 new features **Child** and **Mother**.
+
+```{r,message=FALSE,warning=FALSE}
+combined$Child <- ifelse(combined$Age < 18,"Child","Adult")
+combined$Mother <- ifelse(combined$Sex == "female" & combined$Parch > 0 & combined$Age > 18 & combined$Title != "Miss","Mother","Not Mother")
+```
+
+Let's find out the number of **Adults** and **Childrens** in our training dataset by gender.
+
+```{r,message=FALSE,warning=FALSE}
+table(combined[1:891,]$Child,combined[1:891,]$Sex)
+table(combined[1:891,]$Mother,combined[1:891,]$Sex)
+```
+
+Now we will make a new visualization to check the survival rate of childrens & mothers.
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+combined.Child<-combined[1:891,] %>%
+  group_by(Child,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+#combined.Child
+
+AdultChild<-ggplot(data = combined.Child,aes(x = Child,y = SurRate,group = Survived))+
+  geom_col(aes(fill=Survived))+
+  geom_text(aes(label=round(SurRate,2)),position = position_stack(vjust = 0.5),color = "white")+
+  xlab("Children")+
+  ylab("Survival Rate")+
+  ggtitle("Survival Rate Of Children & Adults")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 15),
+        axis.title.y = element_text(color = "dodgerblue4",size = 15),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.title = element_text(color = "dodgerblue4",size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal")
+
+combined.Mother<-combined[1:891,] %>%
+  group_by(Mother,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+#combined.Mother
+
+MotherNotMother<-ggplot(data = combined.Mother,aes(x = Mother,y = SurRate,group = Survived))+
+  geom_col(aes(fill=Survived))+
+  geom_text(aes(label=round(SurRate,2)),position = position_stack(vjust = 0.5),color = "white")+
+  xlab("Mother")+
+  ylab("Survival Rate")+
+  ggtitle("Survival Rate Of Mothers")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 25,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 15),
+        axis.title.y = element_text(color = "dodgerblue4",size = 15),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.title = element_text(color = "dodgerblue4",size = 15),
+        legend.text = element_text(size = 10),
+        legend.position = "top",
+        legend.direction = "horizontal")
+
+grid.arrange(AdultChild,MotherNotMother)
+```
+
+***
+
+Chances of survival for **Child** & **Mothers** are higher than **Adults** & **Not Mothers** respectively.
+
+Now we will analyze the fare column using a visualization.
+
+***
+
 ```{r,message=FALSE,warning=FALSE,echo=FALSE,fig.width=11, fig.height=6}
-ggplot(data = train,aes(x = Fare,fill=Sex))+
+ggplot(data = combined[1:891,],aes(x = Fare,fill=Sex))+
   geom_density(alpha=0.6)+
   scale_x_continuous(breaks = seq(0,200,20),
                      limits = c(0,200))+
@@ -196,7 +420,7 @@ Let's see if there is any relationship between **Passenger Fare** & **Survival R
 ***
 
 ```{r,message=FALSE,warning=FALSE,echo=FALSE,fig.width=11, fig.height=6}
-ggplot(data = train,aes(x = Fare,fill=Survived))+
+ggplot(data = combined[1:891,],aes(x = Fare,fill=Survived))+
   geom_density(alpha=0.6)+
   scale_x_continuous(breaks = seq(0,200,20),
                      limits = c(0,200))+
@@ -224,7 +448,7 @@ We will make one more plot which is similar to this plot but this time we will u
 ***
 
 ```{r,message=FALSE,warning=FALSE,echo=FALSE,fig.width=11, fig.height=6}
-ggplot(data = train,aes(x = Pclass,y = Fare,color=Survived))+
+ggplot(data = combined[1:891,],aes(x = Pclass,y = Fare,color=Survived))+
   geom_jitter()+
   geom_boxplot(outlier.shape = NA,size=0.5,alpha=0.5)+
   scale_y_continuous(limits = quantile(train$Fare,c(0.25,0.75)))+
@@ -240,6 +464,7 @@ ggplot(data = train,aes(x = Pclass,y = Fare,color=Survived))+
         legend.title = element_text(color = "dodgerblue4",size = 20),
         legend.text = element_text(size = 15),
         legend.position = c(0.9,0.9),
+        strip.text.x = element_text(size = 15, colour = "dodgerblue4"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
@@ -257,7 +482,7 @@ Time for our next plot to check the number of male & female passengers in each c
 ***
 
 ```{r,message=FALSE,warning=FALSE,echo=FALSE,fig.width=11, fig.height=6}
-ggplot(data = train,aes(x = Pclass,y = Fare,color=Sex))+
+ggplot(data = combined[1:891,],aes(x = Pclass,y = Fare,color=Sex))+
   geom_jitter()+
   geom_boxplot(outlier.shape = NA,size=0.5,alpha=0.5)+
   scale_y_continuous(limits = quantile(train$Fare,c(0.25,0.75)))+
@@ -273,6 +498,7 @@ ggplot(data = train,aes(x = Pclass,y = Fare,color=Sex))+
         legend.title = element_text(color = "dodgerblue4",size = 20),
         legend.text = element_text(size = 15),
         legend.position = c(0.9,0.9),
+        strip.text.x = element_text(size = 15, colour = "dodgerblue4"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         legend.background = element_rect(fill = alpha('darkslategray3',0.4)))
@@ -288,7 +514,7 @@ Now to better understand the Survival Rate according to the Passenger Class we w
 ***
 
 ```{r,message=FALSE, warning=FALSE}
-train.Pclass<-train %>%
+train.Pclass<-combined[1:891,] %>%
   group_by(Pclass,Survived) %>%
   summarise(count=n()) %>%
   mutate(SurRate=count/sum(count))
@@ -300,8 +526,7 @@ train.Pclass
 ```{r,message=FALSE,warning=FALSE,echo=FALSE,fig.width=11, fig.height=6}
 ggplot(data = train.Pclass, aes(x = Pclass,y = SurRate , group = Survived)) +
   geom_col(aes(fill = Survived)) +
-  geom_text(aes(label = paste0(round(SurRate*100,1),"%")), position = position_stack(vjust = 0.5),
-            color="white")+
+  geom_text(aes(label = paste0(round(SurRate*100,1),"%")), position = position_stack(vjust = 0.5),color="white")+
   scale_x_discrete(limit = c("1","2","3"),labels = c("Class 1","Class 2","Class 3"))+
   xlab("Passenger Class")+
   ylab("Survival rate")+
@@ -325,25 +550,12 @@ ggplot(data = train.Pclass, aes(x = Pclass,y = SurRate , group = Survived)) +
 
 Some of the female passengers who were travelling in **Passenger class 3** and paid a relatively higher price (more than 20$) for their ticket didn't survived the disaster.
 
-Now we will change our predictions according to these statistics.
-
-
-```{r,message=FALSE,warning=FALSE}
-test$Survived <- 0
-test$Survived[test$Sex == 'female'] <- 1
-test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
-submit<-data.frame(PassengerId=test$PassengerId,Survived=test$Survived)
-write.csv(submit,file = "Prediction_titanic.csv",row.names = FALSE)
-```
-
-We have improved our accuracy by **1.4%**.
-
 Now we will try to find out if there is any relationship between **Port Of Embarkation** & **Survival Rate** using the following visualization.
 
 ***
 
 ```{r,message=FALSE,warning=FALSE}
-train.Embarked<-train %>%
+train.Embarked<-combined[1:891,] %>%
   filter(Embarked != "") %>%
   group_by(Embarked,Survived) %>%
   summarise(count=n()) %>%
@@ -385,7 +597,7 @@ ggplot(data = train.Embarked, aes(x = Embarked,y = SurRate , group = Survived)) 
 Let's find out the impact on survival rate of a passenger who has siblings onboard.
 
 ```{r, message=FALSE, warning=FALSE}
-train.SibSp<-train %>%
+train.SibSp<-combined[1:891,] %>%
   group_by(SibSp,Survived) %>%
   summarise(count=n()) %>%
   mutate(SurRate=count/sum(count))
@@ -420,7 +632,7 @@ Well it looks like passengers with more siblings onboard are less likely to **Su
 We are going to make a similar plot but this time we want to see the impact on survival rate of a passenger who has Parents/Children onboard.
 
 ```{r, message=FALSE, warning=FALSE}
-train.Parch<-train %>%
+train.Parch<-combined[1:891,] %>%
   group_by(Parch,Survived) %>%
   summarise(count=n()) %>%
   mutate(SurRate=count/sum(count))
@@ -454,7 +666,7 @@ The output of this plot is also very similar to the previous one.**Passengers** 
 Well we can use the **Parch** variable to analyze the impact on survival rate for **male** passengers who has more than 2 relationships.
 
 ```{r, message=FALSE, warning=FALSE}
-train.Parch<-train %>%
+train.Parch<-combined[1:891,] %>%
   filter(Sex == "male") %>%
   group_by(Parch,Survived) %>%
   summarise(count=n()) %>%
@@ -491,22 +703,22 @@ We will make a new feature **Family Size** & then we will try to see if there is
 
 
 ```{r, message=FALSE, warning=FALSE}
-train$FamilySize<-train$SibSp+train$Parch+1
+combined$FamilySize<-combined$SibSp+combined$Parch+1
 ```
 
 
 ```{r, message=FALSE, warning=FALSE}
-train.FamilySize<-train %>%
+combined.FamilySize<-combined[1:891,] %>%
   group_by(FamilySize,Survived) %>%
   summarise(count=n()) %>%
   mutate(SurRate=count/sum(count))
-train.FamilySize
+combined.FamilySize
 ```
 
 ***
 
 ```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
-ggplot(data = train.FamilySize,aes(x = FamilySize,y = count))+
+ggplot(data = combined.FamilySize,aes(x = FamilySize,y = count))+
   geom_col(aes(fill=Survived))+
   facet_wrap(~Survived)+
   geom_text(aes(label=count),vjust=-0.3)+
@@ -529,22 +741,12 @@ ggplot(data = train.FamilySize,aes(x = FamilySize,y = count))+
 
 Well it's clearly visible that **Smaller families** are more lkely to survive disaster.
 
-To better understand the relationship between **Family size** & **Survival Rate** we will make a new visualization.
-
-
-```{r, message=FALSE, warning=FALSE}
-train.FamilySize<-train %>%
-  group_by(FamilySize,Survived) %>%
-  summarise(count=n()) %>%
-  mutate(SurRate=count/sum(count))
-train.FamilySize
-
-```
+We will make a similar visualization to see the proportion of survival according to the Familysize just for beter understanding .
 
 ***
 
 ```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
-ggplot(data = train.FamilySize,aes(x = FamilySize,y = SurRate,group=Survived))+
+ggplot(data = combined.FamilySize,aes(x = FamilySize,y = SurRate,group=Survived))+
   geom_col(aes(fill=Survived),position = "stack")+
   geom_text(aes(label = paste0(round(SurRate*100,1),"%")), position = position_stack(vjust = 0.5),
             color="white")+
@@ -569,30 +771,176 @@ ggplot(data = train.FamilySize,aes(x = FamilySize,y = SurRate,group=Survived))+
 
 That's the beauty of visualization.Till now we were thinking that **the chances of survival is vey high for a solo traveller** but in reality it was not.**69.6%** of solo traveller died on that night.
 
-Chances of survival was much higher for a relatively small family.
+It's very difficult for a large family to stick together at the time of any emergency.Maybe that's the element reason behind the low survival rate for any families greater than size **4**. Chances of survival was much higher for a relatively small family. We will create a new feature **FamilyId** where we will try to group the different families based on their **Surnames** so that our model can easily recognize the members of a single family. So first we need to extract the **Surnames** from the names.
 
-* We will create a new feature **FamilyId** where will group the families according to their size.
-    + Family size **1** represent **singleton**.
-    + Family size of **2**,**3** & **4** represent **small** families whose chances of survial was much higher.
-    + Chances of survival was much lower for families with more than **5** members.We will call these families **large**.
-    
-```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE}
-train$FamilyId[train$FamilySize == 1] <- 'singleton'
-train$FamilyId[train$FamilySize < 5 & train$FamilySize > 1] <- 'small'
-train$FamilyId[train$FamilySize > 4] <- 'large'
-table(train$FamilyId)
+
+```{r, message=FALSE, warning=FALSE}
+combined$Name<-as.character(combined$Name)
+combined$SurName<-sapply(combined$Name,FUN = function(x){strsplit(x,split = '[,.]')[[1]][1]})
 ```
 
+Now we will paste the **Family Size** in front of the Surnames to distinguish the different families.We need to convert **FamilySize** as **strings** otherwise we won't be able to paste it with the surnames.
 
+```{r, message=FALSE, warning=FALSE}
+combined$FamilyId<-paste(as.character(combined$FamilySize),combined$SurName,sep = '')
+```
 
+Well there are so many people with the same surname and majority of the passengers were solo traveller.
 
+* To solve this problem we will group the families according to their size.
+    + Family size **1** represent **solo**.
+    + We will name all those families as **small** whose size is **2**.
 
+    
+```{r, message=FALSE, warning=FALSE}
+combined$FamilyId[combined$FamilySize == 1] <- "solo"
+table(combined$FamilyId)
+```
 
+Well there are lot's of family id's with only one or two members.To filter out all those families we will use the following procedure.
 
+```{r, message=FALSE, warning=FALSE,results='asis'}
+FamilyTable<-data.frame(table(combined$FamilyId))
+kable(head(FamilyTable))
+```
 
-Now it's time for some feature engineering **name**,**cabin** & **ticket number** were all unique to each passenger.Perhaps we can use these variables to create some new features which will eventually boost the performance of our machine learning model.
+We have stored the output of table function as a dataframe. Now we are going to subset this dataframe to show only the families with **1** or **2** members and we are going to subset it separately.
 
-We will start with the Name variable.
+```{r, message=FALSE, warning=FALSE}
+FamilyTable_2<-FamilyTable[FamilyTable$Freq ==2,]
+FamilyTable_1<-FamilyTable[FamilyTable$Freq ==1,]
+```
+
+Now we are going to subset our original dataset with these **2** dataframes.
+
+```{r, message=FALSE, warning=FALSE}
+combined$FamilyId[combined$FamilyId %in% FamilyTable_1$Var1]<-"solo"
+combined$FamilyId[combined$FamilyId %in% FamilyTable_2$Var1]<-"small"
+combined$FamilyId<-as.factor(combined$FamilyId)
+```
+
+We have already added the feature title to our dataset.Let's make a visualization to see the survival rate according to **Title**.
+Now we will make a new visualization.
+
+```{r, message=FALSE, warning=FALSE}
+combined.Title<-combined[1:891,] %>%
+  group_by(Title,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+combined.Title
+```
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+ggplot(data = combined.Title,aes(x = Title,y = SurRate))+
+  geom_col(aes(fill=Survived))+
+  facet_wrap(~Survived)+
+  geom_text(aes(label=round(SurRate,2)),vjust=-0.3)+
+  xlab("Titles")+
+  ylab("Survival Rate")+
+  ggtitle("Survival Rate According To Titles")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal")
+```
+
+***
+
+Survival Rate was lowest with **Mr** & **Lady** Survived the most.
+Some of the passenger name contains additional names in brackets.Maybe this indicates their social status.
+
+```{r, message=FALSE, warning=FALSE}
+combined$AdditionalName<-ifelse(grepl("\\(",combined$Name),"Y","N")
+combined.AdditionalName<-combined[1:891,] %>%
+  group_by(AdditionalName,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+combined.AdditionalName
+```
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+ggplot(data = combined.AdditionalName,aes(x = AdditionalName,y = SurRate))+
+  geom_col(aes(fill=Survived))+
+  facet_wrap(~Survived)+
+  geom_text(aes(label=round(SurRate,2)),vjust=-0.3)+
+  xlab("Additional Names")+
+  ylab("Survival Rate")+
+  ggtitle("Survival Rate Based On Additional Names")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal")
+```
+
+***
+
+If you have additional names in brackets then your chances of survival is higher than the other passengers.
+
+Similarly we can check for names with **Quotes**.
+
+```{r, message=FALSE, warning=FALSE}
+combined$QuotesInNames<-ifelse(grepl('\\"',combined$Name),"Y","N")
+combined.QuotesInNames<-combined[1:891,] %>%
+  group_by(QuotesInNames,Survived) %>%
+  summarise(count=n()) %>%
+  mutate(SurRate=count/sum(count))
+combined.QuotesInNames
+```
+
+***
+
+```{r, fig.height=6, fig.width=11, message=FALSE, warning=FALSE,echo=FALSE}
+ggplot(data = combined.QuotesInNames,aes(x = QuotesInNames,y = SurRate))+
+  geom_col(aes(fill=Survived))+
+  facet_wrap(~Survived)+
+  geom_text(aes(label=round(SurRate,2)),vjust=-0.3)+
+  xlab("Quotes In Names")+
+  ylab("Survival Rate")+
+  ggtitle("Survival Rate Based On Quotes In Names")+
+  theme(plot.title = element_text(color = "dodgerblue4",size = 30,hjust = 0.5),
+        axis.title.x = element_text(color = "dodgerblue4",size = 20),
+        axis.title.y = element_text(color = "dodgerblue4",size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
+        legend.title = element_text(color = "dodgerblue4",size = 20),
+        legend.text = element_text(size = 15),
+        legend.position = "top",
+        legend.direction = "horizontal")
+```
+
+***
+
+Well same thing with Quotes in names.If your name contains quoted characters then you are more likely to survive the disaster.
+
+Now we are left with the **cabin** & **ticket** variables.Let's have a look at these two variables.
+
+```{r, message=FALSE, warning=FALSE}
+length(which(combined$Cabin==""))
+```
+
+There are total **1309** records in our dataset and **1014** records have no values for **cabin**.So we are not going to analyze this variable further.Same with **ticket** variable it's very difficult to analyze as the format is not well defined.We have already analyzed most of the variables and introduced new features so we can exclude these two variables.
+
+Now we will split our combined dataset into train & test set.
+
+```{r}
+train<-combined[1:891,]
+test<-combined[892:1309,]
+```
+
 
 
 
